@@ -72,10 +72,10 @@ public class Constants {
     public static final int L_SORT_DECREASING = 2;
 
     /* Sort box or c.c. by horiz location */
-    public static final int L_SORT_BY_X = 3;
+    public static final int L_SORT_BY_X = 1;
 
     /* Sort box or c.c. by vert location */
-    public static final int L_SORT_BY_Y = 4;
+    public static final int L_SORT_BY_Y = 2;
 
     /* Sort box or c.c. by width */
     public static final int L_SORT_BY_WIDTH = 5;

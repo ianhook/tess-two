@@ -444,6 +444,8 @@ public class Ocr {
                         }
 
                         return;
+                    } else {
+                        mParameters.setLanguage(languages.get(0));
                     }
 
                     // Set the callback so that we can receive completion events
