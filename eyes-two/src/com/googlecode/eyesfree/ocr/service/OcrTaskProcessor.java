@@ -26,6 +26,7 @@ import com.googlecode.eyesfree.ocr.client.Ocr;
 import com.googlecode.eyesfree.ocr.client.Ocr.Parameters;
 import com.googlecode.eyesfree.ocr.client.OcrResult;
 import com.googlecode.eyesfree.textdetect.HydrogenTextDetector;
+import com.googlecode.leptonica.android.Box;
 import com.googlecode.leptonica.android.Constants;
 import com.googlecode.leptonica.android.Convert;
 import com.googlecode.leptonica.android.Pix;
@@ -34,6 +35,7 @@ import com.googlecode.leptonica.android.ReadFile;
 import com.googlecode.leptonica.android.Rotate;
 import com.googlecode.leptonica.android.Scale;
 import com.googlecode.leptonica.android.WriteFile;
+import com.googlecode.tesseract.android.ResultIterator;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.io.File;
@@ -310,7 +312,8 @@ public class OcrTaskProcessor {
             final String language = params.getLanguage();
             final boolean debug = params.getFlag(Ocr.Parameters.FLAG_DEBUG_MODE);
             final boolean detectText = params.getFlag(Ocr.Parameters.FLAG_DETECT_TEXT);
-            final int pageSegMode = detectText ? Ocr.Parameters.PSM_SINGLE_LINE : params
+            /* TODO if the text detector works single line mode might be best, but this is not guaranteed? */
+            final int pageSegMode = detectText ? TessBaseAPI.PageSegMode.PSM_SINGLE_LINE : params
                     .getPageSegMode();
 
             mTessBaseAPI.init(mDatapath.getAbsolutePath() + "/", language);
@@ -428,7 +431,35 @@ public class OcrTaskProcessor {
             }
 
             mTessBaseAPI.setImage(pix);
+            Pixa words = mTessBaseAPI.getWords();
+            ArrayList<Rect> boxs = words.getBoxRects();
+        	//Log.d("sendMessage", mTessBaseAPI.getHOCRText(0));
+        	int avg = 0;
+        	int max = 0;
+        	int min = 10000;
+        	int size;
+            for(int i = 0; i < boxs.size(); i++){
+            	Log.d("sendMessage", "box " + boxs.get(i).flattenToString());
+            	size = boxs.get(i).right - boxs.get(i).left;
+            	Log.d("sendMessage", String.format("width %d",size));
+            	avg += size;
+            	if(size > max) {
+            		max = size;
+            	}
+            	if(size < min) {
+            		min = size;
+            	}
+            }
+            avg /= boxs.size();
+            
+        	Log.d("sendMessage", String.format("min %d, max %d, avg %d", min, max, avg));
+            //ResultIterator resIt = mTessBaseAPI.getResultIterator();
+            //resIt.begin();
+            //while(resIt.next(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE)) {
+            //	Log.d("sendMessage", resIt.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE));
+            //}
             String string = mTessBaseAPI.getUTF8Text();
+            Log.d("sendMessage", string);
             int[] confidences = mTessBaseAPI.wordConfidences();
             mTessBaseAPI.clear();
 
@@ -513,14 +544,25 @@ public class OcrTaskProcessor {
             // Run text detection (thresholding, alignment, etc.)
             mTextDetector.setSourceImage(curr);
             mTextDetector.detectText();
-            curr.recycle();
 
             // Get alignment angle
             angle[0] = mTextDetector.getSkewAngle();
 
             // Sort by increasing Y-value so that we read results in order
             Pixa unsorted = mTextDetector.getTextAreas();
-            Pixa pixa = unsorted.sort(Constants.L_SORT_BY_Y, Constants.L_SORT_INCREASING);
+            Log.d("sendMessage", String.format("unsorted size %d", unsorted.size()));
+            Pixa pixa;
+            if(unsorted.size() > 0) {
+            	curr.recycle();
+            	/* TODO use of these sorting parameters may assume English style text instead of Japanese */
+            	pixa = unsorted.sort(Constants.L_SORT_BY_Y, Constants.L_SORT_INCREASING);
+            } else {
+            	/* TODO for some reason the text detector has failed, though there is text, so we'll try parsing the whole image */
+            	pixa = Pixa.createPixa(1, w, h);
+            	Box box = new Box(0, 0, w, h);
+            	pixa.add(curr, box, Constants.L_CLONE);
+            	curr.recycle();
+            }
             unsorted.recycle();
 
             if (outputDir != null && debug) {

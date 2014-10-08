@@ -43,6 +43,8 @@ import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Set;
 
+import com.googlecode.tesseract.android.TessBaseAPI;
+
 /**
  * Recognizes text in images. This abstracts away the complexities of using the
  * OCR service such as setting up the IBinder connection and handling
@@ -444,8 +446,6 @@ public class Ocr {
                         }
 
                         return;
-                    } else {
-                        mParameters.setLanguage(languages.get(0));
                     }
 
                     // Set the callback so that we can receive completion events
@@ -637,11 +637,6 @@ public class Ocr {
      * @author alanv@google.com (Alan Viverette)
      */
     public static class Parameters implements Parcelable {
-        /** Whitelist of characters to recognize */
-        public static final String VAR_CHAR_WHITELIST = "tessedit_char_whitelist";
-
-        /** Blacklist of characters to not recognize */
-        public static final String VAR_CHAR_BLACKLIST = "tessedit_char_blacklist";
 
         /** Detect text in image using TextDetect */
         public static final String FLAG_DETECT_TEXT = "detect_text";
@@ -655,32 +650,14 @@ public class Ocr {
         /** Write intermediate files to external storage */
         public static final String FLAG_DEBUG_MODE = "debug_mode";
 
-        /** Fully automatic page segmentation. */
-        public static final int PSM_AUTO = 0;
-
-        /** Assume a single column of text of variable sizes. */
-        public static final int PSM_SINGLE_COLUMN = 1;
-
-        /** Assume a single uniform block of text. */
-        public static final int PSM_SINGLE_BLOCK = 2;
-
-        /** Treat the image as a single text line. (Default) */
-        public static final int PSM_SINGLE_LINE = 3;
-
-        /** Treat the image as a single word. */
-        public static final int PSM_SINGLE_WORD = 4;
-
-        /** Treat the image as a single character. */
-        public static final int PSM_SINGLE_CHAR = 5;
-
-        private static final int PSM_MODE_COUNT = 6;
-
+        /** Excepts TessBaseAPI.VAR_CHAR_WHITELIST and TessBaseAPI.VAR_CHAR_BLACKLIST **/
         private Bundle mVariables;
 
         private Bundle mFlags;
 
         private String mLanguage;
 
+        /** Values for this should be found in TessBaseAPI.PageSegMode **/
         private int mPageSegMode;
 
         /**
@@ -689,7 +666,7 @@ public class Ocr {
         public Parameters() {
             mVariables = new Bundle();
             mFlags = new Bundle();
-            mPageSegMode = PSM_SINGLE_LINE;
+            mPageSegMode = TessBaseAPI.PageSegMode.PSM_AUTO;
             mLanguage = "eng";
         }
 
@@ -794,14 +771,14 @@ public class Ocr {
 
         /**
          * Sets the page segmentation mode, which is used by the OCR engine to
-         * detect and group areas of text. See the Parameters.PSM_* constants
+         * detect and group areas of text. See the TessBaseAPI.PageSegMode.* constants
          * for available values.
          *
-         * @param pageSegMode A page segmentation mode from Parameters.PSM_*
+         * @param pageSegMode A page segmentation mode from TessBaseAPI.PageSegMode.*
          *            constants.
          */
         public void setPageSegMode(int pageSegMode) {
-            if (pageSegMode < 0 || pageSegMode > PSM_MODE_COUNT) {
+            if (pageSegMode < 0 || pageSegMode > TessBaseAPI.PageSegMode.PSM_COUNT) {
                 throw new IllegalArgumentException("Invalid page segmentation mode");
             }
 
@@ -810,7 +787,7 @@ public class Ocr {
 
         /**
          * Returns the current page segmentation mode as defined in
-         * Parameters.PSM_* constants.
+         * TessBaseAPI.PageSegMode.* constants.
          *
          * @return The current page segmentation mode.
          */
