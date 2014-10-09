@@ -182,8 +182,8 @@ bool ValidatePairV(BOX *b1, BOX *b2, l_float32 *pconf,
   *pconf = 0.0;
 
   l_int32 max_h = L_MAX(b1->w, b2->w);
-  l_int32 h_dist = BBoxHDist(b1, b2);
-  l_int32 v_dist = BBoxVDist(b1, b2);
+  l_int32 h_dist = BBoxVDist(b1, b2);
+  l_int32 v_dist = BBoxHDist(b1, b2);
   l_float32 h_ratio = RelativeDiff(b1->w, b2->w);
   l_int32 d1 = L_MAX(b1->h, b1->w);
   l_int32 d2 = L_MAX(b2->h, b2->w);
@@ -454,8 +454,6 @@ bool ValidateCluster(PIX *pix8, PIXA *pixa, BOX *box, l_float32 *pconf,
   if (fdr < params.cluster_min_fdr)
     return false;
 
-  fprintf(stderr, "validated cluster x:%d, y:%d, h:%d, w:%d, aspect:%f, count:%d, fdr:%f\n",
-		  box->x, box->y,box->h, box->w, aspect, count, fdr);
 /*
   l_int32 edge_max, edge_avg;
   pixEdgeMax(pix8, &edge_max, &edge_avg);
