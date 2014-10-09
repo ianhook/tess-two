@@ -26,6 +26,7 @@ import com.googlecode.leptonica.android.Pix;
 import com.googlecode.leptonica.android.ReadFile;
 
 import java.io.File;
+import java.io.IOException;
 
 /**
  * Java interface for the Tesseract OCR engine. Does not implement all available
@@ -341,8 +342,9 @@ public class TessBaseAPI {
      * Provides an image for Tesseract to recognize.
      *
      * @param file absolute path to the image file
+     * @throws IOException 
      */
-    public void setImage(File file) {
+    public void setImage(File file) throws IOException {
         Pix image = ReadFile.readFile(file);
 
         if (image == null) {

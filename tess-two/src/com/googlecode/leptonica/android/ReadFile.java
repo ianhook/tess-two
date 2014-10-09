@@ -18,8 +18,13 @@ package com.googlecode.leptonica.android;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Image input and output methods.
@@ -135,8 +140,11 @@ public class ReadFile {
      *
      * @param file The JPEG or BMP-encoded file to read in as a Pix.
      * @return a Pix object
+     * @throws IOException 
      */
-    public static Pix readFile(File file) {
+    public static Pix readFile(File file) throws IOException {
+    	Log.d("cache", "reading: "+file.getAbsolutePath());
+    	Log.d("cache", String.format("reading: %d",file.length()));
         if (file == null)
             throw new IllegalArgumentException("File must be non-null");
         if (!file.exists())
@@ -144,15 +152,27 @@ public class ReadFile {
         if (!file.canRead())
             throw new IllegalArgumentException("Cannot read file");
 
-        final BitmapFactory.Options opts = new BitmapFactory.Options();
-        opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
+//        final BitmapFactory.Options opts = new BitmapFactory.Options();
+//        opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
-        final Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+        FileInputStream input = new FileInputStream(file);
+        long longlength = file.length();
+        int length = (int) longlength;
+        if (length != longlength)
+            throw new IOException("File size >= 2 GB");
+        byte[] data = new byte[length];
+		input.read(data);
+
+/*        final Bitmap bmp = BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+        if(bmp == null) {
+        	Log.d("cache", "save load conversion error");
+        }
         final Pix pix = readBitmap(bmp);
+        Log.d("cache", String.format("cache height is %d", pix.getHeight()));
 
         bmp.recycle();
-
-        return pix;
+*/
+        return readMem(data);
     }
 
     /**

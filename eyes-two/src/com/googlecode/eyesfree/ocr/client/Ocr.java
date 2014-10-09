@@ -208,7 +208,10 @@ public class Ocr {
 
             FileOutputStream output = new FileOutputStream(cached);
             output.write(data);
+            output.flush();
             output.close();
+            Log.d("cache", "written: " + cached.getAbsolutePath());
+            Log.d("cache", String.format("written: %d", cached.length()));
 
             job = enqueue(cached);
 
@@ -649,6 +652,9 @@ public class Ocr {
 
         /** Write intermediate files to external storage */
         public static final String FLAG_DEBUG_MODE = "debug_mode";
+        
+        /** Check to see if the image needs to be rotated */
+        public static final String FLAG_DO_ROTATION = "do_rotation";
 
         /** Excepts TessBaseAPI.VAR_CHAR_WHITELIST and TessBaseAPI.VAR_CHAR_BLACKLIST **/
         private Bundle mVariables;

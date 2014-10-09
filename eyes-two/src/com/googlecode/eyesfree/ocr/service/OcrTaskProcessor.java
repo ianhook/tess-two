@@ -39,6 +39,7 @@ import com.googlecode.tesseract.android.ResultIterator;
 import com.googlecode.tesseract.android.TessBaseAPI;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -250,7 +251,14 @@ public class OcrTaskProcessor {
             final OcrTask task = tasks[0];
             final File file = task.file;
             final byte[] data = task.data;
-            final Pix pix = file == null ? ReadFile.readMem(data) : ReadFile.readFile(file);
+            final Pix pix;
+            try {
+                pix = file == null ? ReadFile.readMem(data) : ReadFile.readFile(file);
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+                return null;
+            }
 
             mPid = task.pid;
             mToken = task.token;
@@ -357,7 +365,7 @@ public class OcrTaskProcessor {
             // If the preliminary results don't look good (avg. conf < 75), then
             // try
             // again and rotate them all 180 degrees
-            if (avgConfidence < 75.0f) {
+            if (avgConfidence < 75.0f && params.getFlag(Ocr.Parameters.FLAG_DO_ROTATION)) {
                 Log.e(TAG, "First " + numSamples + " results don't look so hot (avgConfidence="
                         + avgConfidence + ")");
 
@@ -431,34 +439,40 @@ public class OcrTaskProcessor {
             }
 
             mTessBaseAPI.setImage(pix);
+            Rect rect = pix.getRect();
+            Log.d("sendMessage", String.format("processing: b:%d, l:%d, t:%d, r:%d", rect.bottom, rect.left, rect.top, rect.right));
+            String string = mTessBaseAPI.getUTF8Text();
             Pixa words = mTessBaseAPI.getWords();
             ArrayList<Rect> boxs = words.getBoxRects();
         	//Log.d("sendMessage", mTessBaseAPI.getHOCRText(0));
-        	int avg = 0;
-        	int max = 0;
-        	int min = 10000;
-        	int size;
-            for(int i = 0; i < boxs.size(); i++){
-            	Log.d("sendMessage", "box " + boxs.get(i).flattenToString());
-            	size = boxs.get(i).right - boxs.get(i).left;
-            	Log.d("sendMessage", String.format("width %d",size));
-            	avg += size;
-            	if(size > max) {
-            		max = size;
+            if(boxs.size() > 0) {
+            	int avg = 0;
+            	int max = 0;
+            	int min = 10000;
+            	int size;
+            	for(int i = 0; i < boxs.size(); i++){
+            		Log.d("sendMessage", "box " + boxs.get(i).flattenToString());
+            		size = boxs.get(i).right - boxs.get(i).left;
+            		Log.d("sendMessage", String.format("width %d",size));
+            		avg += size;
+            		if(size > max) {
+            			max = size;
+            		}
+            		if(size < min) {
+            			min = size;
+            		}
             	}
-            	if(size < min) {
-            		min = size;
-            	}
+            	avg /= boxs.size();
+            	Log.d("sendMessage", String.format("min %d, max %d, avg %d", min, max, avg));
+            } else {
+            	Log.d("sendMessage", "no words");
             }
-            avg /= boxs.size();
             
-        	Log.d("sendMessage", String.format("min %d, max %d, avg %d", min, max, avg));
             //ResultIterator resIt = mTessBaseAPI.getResultIterator();
             //resIt.begin();
             //while(resIt.next(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE)) {
             //	Log.d("sendMessage", resIt.getUTF8Text(TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE));
             //}
-            String string = mTessBaseAPI.getUTF8Text();
             Log.d("sendMessage", string);
             int[] confidences = mTessBaseAPI.wordConfidences();
             mTessBaseAPI.clear();
@@ -500,7 +514,15 @@ public class OcrTaskProcessor {
             // Transfer parameters to text detector
             HydrogenTextDetector.Parameters hydrogenParams = mTextDetector.getParameters();
             hydrogenParams.debug = debug;
+            hydrogenParams.text_direction = 2;
+            hydrogenParams.pair_h_ratio = 10.0f;
+            hydrogenParams.cluster_width_spacing = 10;
+            hydrogenParams.cluster_min_blobs = 2;
+            hydrogenParams.single_max_aspect = 6.0f;
+            hydrogenParams.single_min_density = 0.01f;
+            hydrogenParams.pair_d_ratio = 2.5f;
             hydrogenParams.skew_enabled = params.getFlag(Ocr.Parameters.FLAG_ALIGN_TEXT);
+            Log.d("sendMessage", hydrogenParams.out_dir);
             mTextDetector.setParameters(hydrogenParams);
 
             Pix temp = null;
@@ -550,14 +572,15 @@ public class OcrTaskProcessor {
 
             // Sort by increasing Y-value so that we read results in order
             Pixa unsorted = mTextDetector.getTextAreas();
-            Log.d("sendMessage", String.format("unsorted size %d", unsorted.size()));
             Pixa pixa;
             if(unsorted.size() > 0) {
+                Log.d("sendMessage", String.format(">0 unsorted size %d", unsorted.size()));
             	curr.recycle();
             	/* TODO use of these sorting parameters may assume English style text instead of Japanese */
-            	pixa = unsorted.sort(Constants.L_SORT_BY_Y, Constants.L_SORT_INCREASING);
+            	pixa = unsorted.sort(Constants.L_SORT_BY_X, Constants.L_SORT_DECREASING);
             } else {
             	/* TODO for some reason the text detector has failed, though there is text, so we'll try parsing the whole image */
+                Log.d("sendMessage", String.format("unsorted size %d", unsorted.size()));
             	pixa = Pixa.createPixa(1, w, h);
             	Box box = new Box(0, 0, w, h);
             	pixa.add(curr, box, Constants.L_CLONE);
@@ -566,7 +589,7 @@ public class OcrTaskProcessor {
             unsorted.recycle();
 
             if (outputDir != null && debug) {
-                pixa.writeToFileRandomCmap(new File(outputDir, time + "_5_detected.jpg"));
+            	pixa.writeToFileRandomCmap(new File(outputDir, time + "_5_detected.jpg"));
             }
 
             return pixa;
@@ -600,6 +623,7 @@ public class OcrTaskProcessor {
             this.data = data;
             this.params = params;
             this.outputDir = Environment.getExternalStorageDirectory();
+            Log.d("sendMessage", "task out: "+ this.outputDir.getAbsolutePath());
         }
     }
 
