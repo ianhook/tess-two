@@ -177,8 +177,49 @@ bool ValidateSingleton(PIX *pix, BOX *box, PIX *pix8, l_float32 *pconf,
 /**
  * Test whether b1 and b2 are close enough to be a character pair.
  */
+bool ValidatePairV(BOX *b1, BOX *b2, l_float32 *pconf,
+                  HydrogenTextDetector::TextDetectorParameters &params) {
+  *pconf = 0.0;
+
+  l_int32 max_h = L_MAX(b1->w, b2->w);
+  l_int32 h_dist = BBoxHDist(b1, b2);
+  l_int32 v_dist = BBoxVDist(b1, b2);
+  l_float32 h_ratio = RelativeDiff(b1->w, b2->w);
+  l_int32 d1 = L_MAX(b1->h, b1->w);
+  l_int32 d2 = L_MAX(b2->h, b2->w);
+  l_float32 d_ratio = RelativeDiff(d1, d2);
+
+  /* Horizontal spacing less than 2x taller edge */
+  if (h_dist > params.pair_h_dist_ratio * max_h)
+    return false;
+
+  /* Must share at least 0.25x the larger vertical edge */
+  if (v_dist > 0 || L_ABS(v_dist) < max_h * params.pair_h_shared)
+    return false;
+
+  /* Heights must be at least 2x tolerance */
+  if (h_ratio > params.pair_h_ratio)
+    return false;
+
+  /* Maximum dimensions must be within 3x tolerance */
+  if (d_ratio > params.pair_d_ratio)
+    return false;
+
+  // TODO(alanv): Does this need to return a confidence value?
+  *pconf = 1.0;
+
+  return true;
+}
+
+/**
+ * Test whether b1 and b2 are close enough to be a character pair.
+ */
 bool ValidatePair(BOX *b1, BOX *b2, l_float32 *pconf,
                   HydrogenTextDetector::TextDetectorParameters &params) {
+
+  if (params.text_direction == 2)
+    return ValidatePairV(b1, b2, pconf, params);
+
   *pconf = 0.0;
 
   l_int32 max_h = L_MAX(b1->h, b2->h);
@@ -306,12 +347,48 @@ l_float32 ComputePairConfidence(BOX *b1, BOX *b2) {
 
   return confidence;
 }
+/**
+ * Test whether b1 and b2 are close enough to be clustered. More relaxed constraints than ValidatePair().
+ */
+bool ValidateClusterPairV(BOX *b1, BOX *b2, bool *too_far, l_float32 *pconf,
+                         HydrogenTextDetector::TextDetectorParameters &params) {
+  *pconf = 0.0;
+
+  l_int32 max_d = L_MAX(b1->w, b1->h);
+  l_float32 h_ratio = RelativeDiff(b1->w, b2->w);
+
+  // If we're already too far out, quit
+  if (b2->y > b1->y + b1->h + params.cluster_width_spacing * max_d) {
+    *too_far = true;
+
+    return false;
+  }
+
+  *too_far = false;
+
+  // i and j must share at least half an edge
+  if (b2->x + b2->w * params.cluster_shared_edge < b1->x)
+    return false;
+  if (b1->x + b1->w * params.cluster_shared_edge < b2->x)
+    return false;
+
+  // Heights must be at least 2x tolerance
+  if (h_ratio > params.pair_h_ratio)
+    return false;
+
+  *pconf = 1.0; //ComputePairConfidence(b1, b2);
+
+  return true;
+}
 
 /**
  * Test whether b1 and b2 are close enough to be clustered. More relaxed constraints than ValidatePair().
  */
 bool ValidateClusterPair(BOX *b1, BOX *b2, bool *too_far, l_float32 *pconf,
                          HydrogenTextDetector::TextDetectorParameters &params) {
+
+  if(params.text_direction == 2)
+	return ValidateClusterPairV(b1, b2, too_far, pconf, params);
   *pconf = 0.0;
 
   l_int32 max_d = L_MAX(b1->w, b1->h);
@@ -353,11 +430,19 @@ bool ValidateCluster(PIX *pix8, PIXA *pixa, BOX *box, l_float32 *pconf,
                      HydrogenTextDetector::TextDetectorParameters &params) {
   *pconf = 0.0;
 
-  l_float32 aspect = box->w / (l_float32) box->h;
+  l_float32 aspect;
   l_int32 count = pixaGetCount(pixa);
   l_float32 fdr = ComputeFDR(pix8);
 
-  if (box->h < 15)
+  if(params.text_direction == 1)
+	  aspect = box->w / (l_float32) box->h;
+  else
+	  aspect = box->h / (l_float32) box->w;
+
+  if (params.text_direction == 1 && box->h < 15)
+    return false;
+
+  if (params.text_direction == 2 && box->w < 15)
     return false;
 
   if (aspect < params.cluster_min_aspect)
@@ -368,6 +453,9 @@ bool ValidateCluster(PIX *pix8, PIXA *pixa, BOX *box, l_float32 *pconf,
 
   if (fdr < params.cluster_min_fdr)
     return false;
+
+  fprintf(stderr, "validated cluster x:%d, y:%d, h:%d, w:%d, aspect:%f, count:%d, fdr:%f\n",
+		  box->x, box->y,box->h, box->w, aspect, count, fdr);
 /*
   l_int32 edge_max, edge_avg;
   pixEdgeMax(pix8, &edge_max, &edge_avg);

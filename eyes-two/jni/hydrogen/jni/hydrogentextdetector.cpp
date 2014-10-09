@@ -94,6 +94,7 @@ void Java_com_googlecode_eyesfree_textdetect_HydrogenTextDetector_nativeSetParam
   getStringField(env, paramClass, params, "out_dir", myParams->out_dir);
 
   myParams->debug = getBoolField(env, paramClass, params, "debug");
+  myParams->text_direction = getIntField(env, paramClass, params, "text_direction");
   myParams->edge_tile_x = getIntField(env, paramClass, params, "edge_tile_x");
   myParams->edge_tile_y = getIntField(env, paramClass, params, "edge_tile_y");
   myParams->edge_thresh = getIntField(env, paramClass, params, "edge_thresh");

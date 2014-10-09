@@ -25,8 +25,14 @@ bool ValidatePairOld(BOX *b1, BOX *b2);
 bool ValidateSingleton(PIX *pix, BOX *box, PIX *pix8, l_float32 *pconf,
                        HydrogenTextDetector::TextDetectorParameters &params);
 
+bool ValidatePairV(BOX *b1, BOX *b2, l_float32 *pconf,
+                  HydrogenTextDetector::TextDetectorParameters &params);
+
 bool ValidatePair(BOX *b1, BOX *b2, l_float32 *pconf,
                   HydrogenTextDetector::TextDetectorParameters &params);
+
+bool ValidateClusterPairV(BOX *b1, BOX *b2, bool *too_far, l_float32 *pconf,
+                         HydrogenTextDetector::TextDetectorParameters &params);
 
 bool ValidateClusterPair(BOX *b1, BOX *b2, bool *too_far, l_float32 *pconf,
                          HydrogenTextDetector::TextDetectorParameters &params);

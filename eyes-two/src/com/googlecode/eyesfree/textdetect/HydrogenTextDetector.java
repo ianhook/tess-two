@@ -121,6 +121,9 @@ public class HydrogenTextDetector {
         public boolean debug;
 
         public String out_dir;
+        
+        // 1 for horizontal 2 for vertical
+        public int text_direction;
 
         // Edge-based thresholding
         public int edge_tile_x;
@@ -187,6 +190,7 @@ public class HydrogenTextDetector {
         public Parameters() {
             debug = false;
             out_dir = Environment.getExternalStorageDirectory().toString();
+            text_direction = 1;
 
             // Edge-based thresholding
             edge_tile_x = 32;

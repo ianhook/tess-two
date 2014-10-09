@@ -106,7 +106,9 @@ l_int32 ConnCompValidPixa(PIX *pix8, PIX *pix, PIXA **ppixa, NUMA **pconfs,
 
   /* Sort pixa, then destroy old pixa */
   NUMA *naindex;
-  if ((pixasort = pixaSort(pixa, L_SORT_BY_X, L_SORT_INCREASING, &naindex, L_CLONE)) == NULL)
+  if (params.text_direction == 1 && (pixasort = pixaSort(pixa, L_SORT_BY_X, L_SORT_INCREASING, &naindex, L_CLONE)) == NULL)
+    return ERROR_INT("pixasort not made", procName, 1);
+  if (params.text_direction == 2 && (pixasort = pixaSort(pixa, L_SORT_BY_Y, L_SORT_INCREASING, &naindex, L_CLONE)) == NULL)
     return ERROR_INT("pixasort not made", procName, 1);
   confsort = numaSortByIndex(confs, naindex);
 
@@ -120,7 +122,7 @@ l_int32 ConnCompValidPixa(PIX *pix8, PIX *pix, PIXA **ppixa, NUMA **pconfs,
   *ppixa = pixasort;
   *pconfs = confsort;
 
-  return 0;
+  return numaGetCount(confsort);
 }
 
 l_int32 MergePix(PIXA *pixad, l_int32 d_idx, PIXA *pixas, l_int32 s_idx) {

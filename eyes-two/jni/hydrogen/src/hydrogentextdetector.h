@@ -28,6 +28,7 @@ public:
   struct TextDetectorParameters {
     bool debug;
     char out_dir[255];
+    l_int32 text_direction;
 
     // Edge-based thresholding
     l_int32 edge_tile_x;
